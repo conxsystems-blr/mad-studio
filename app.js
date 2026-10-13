@@ -14,7 +14,7 @@ const DEF_SETTINGS = {
     hsn: '3406', dueDays: 7, validDays: 15
   },
   rates: { wax: 300, fo: 1500, wick: 2, logoSt: 3, baseSt: 2, boxS: 15, boxM: 18, boxL: 22, boxSt: 2, dust: 3, tissue: 4, misc: 1 },
-  size: { S: { w: 65, wicks: 1, lab: 12, hrs: 15 }, M: { w: 125, wicks: 1, lab: 15, hrs: 30 }, L: { w: 220, wicks: 2, lab: 20, hrs: 50 } },
+  size: { S: { name: 'Small', w: 65, wicks: 1, lab: 12, hrs: 15, box: 15 }, M: { name: 'Medium', w: 125, wicks: 1, lab: 15, hrs: 30, box: 18 }, L: { name: 'Large', w: 220, wicks: 2, lab: 20, hrs: 50, box: 22 } },
   set: { load: 10, waste: 5, mkWs: 1.8, mkRt: 3, gst: 5, cureDays: 10 },
   tins: [
     { id: 'RS', name: 'Round · small', size: 'S', rate: 18, wax: 65 }, { id: 'RM', name: 'Round · medium', size: 'M', rate: 28, wax: 125 },
@@ -25,7 +25,7 @@ const DEF_SETTINGS = {
     { id: 'gift', name: 'Gift set', box: true, gift: true, extra: 0 }],
   scents: ['White Tea & Ginger', 'Sandalwood & Vetiver', 'Oud & Amber', 'Vanilla & Tonka', 'Coffee & Cardamom', 'Saffron & Amber', 'Sea Salt & Sage', 'Black Fig & Cassis']
 };
-const RATE_FIELDS = [['wax','Soy wax','per kg'],['fo','Fragrance oil','per kg'],['wick','Wick with tab','each'],['logoSt','Logo sticker (UV)','each'],['baseSt','Bottom sticker (UV)','each'],['boxS','Box · small','each'],['boxM','Box · medium','each'],['boxL','Box · large','each'],['boxSt','Box back sticker','each'],['dust','Dust cover card','each'],['tissue','Tissue + seal','per set'],['misc','Misc (glue dot etc.)','per candle']];
+const RATE_FIELDS = [['wax','Soy wax','per kg'],['fo','Fragrance oil','per kg'],['wick','Wick with tab','each'],['logoSt','Logo sticker (UV)','each'],['baseSt','Bottom sticker (UV)','each'],['boxSt','Box back sticker','each'],['dust','Dust cover card','each'],['tissue','Tissue + seal','per set'],['misc','Misc (glue dot etc.)','per candle']];
 const SET_FIELDS = [['load','Fragrance load','% of wax weight'],['waste','Wastage','% of wax + oil'],['mkWs','Wholesale markup','× cost'],['mkRt','Retail markup','× cost'],['gst','GST on candles','%'],['cureDays','Cure time','days']];
 const SIZE_NAMES = { S: 'Small', M: 'Medium', L: 'Large' };
 const SOP = {
@@ -77,6 +77,8 @@ function S() { const s = store.get('settings') || clone(DEF_SETTINGS);
   for (const k of Object.keys(DEF_SETTINGS)) if (s[k] == null) s[k] = clone(DEF_SETTINGS[k]);
   for (const k of ['business', 'rates', 'set']) s[k] = Object.assign(clone(DEF_SETTINGS[k]), s[k]);
   for (const z of ['S', 'M', 'L']) s.size[z] = Object.assign(clone(DEF_SETTINGS.size[z]), s.size[z]);
+  // older saves kept box prices under rates (boxS/boxM/boxL)
+  for (const z of Object.keys(s.size)) { const d = s.size[z]; if (!d.name) d.name = SIZE_NAMES[z] || z; if (d.box == null) d.box = s.rates['box' + z] ?? 0; }
   return s; }
 function saveSettings(s) { store.put('settings', 'settings', s); }
 
@@ -125,6 +127,9 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 /* ---------------- Costing engine ---------------- */
 const tinOf = (s, id) => s.tins.find(t => t.id === id) || s.tins[0];
 // Wax per candle: the tin's own weight if entered, otherwise the size default.
+const sizeOf = (s, t) => s.size[t.size] || s.size.M;
+const sizeKey = (s, t) => (s.size[t.size] ? t.size : 'M');
+const sizeName = (s, z) => s.size[z]?.name || SIZE_NAMES[z] || z;
 const waxOf = (s, t) => (+t.wax > 0 ? +t.wax : (s.size[t.size] || s.size.M).w);
 const tinLabel = (s, t) => `${t.name} · ${waxOf(s, t)} g`;
 const packOf = (s, id) => s.packs.find(p => p.id === id) || s.packs[0];
@@ -132,19 +137,19 @@ function unitCost(s, tinId, packId) {
   const t = tinOf(s, tinId), p = packOf(s, packId), z = s.size[t.size] || s.size.M, r = s.rates;
   const w = waxOf(s, t), wax = w / 1000 * r.wax, oil = w * s.set.load / 100 / 1000 * r.fo;
   let c = (wax + oil) * (1 + s.set.waste / 100) + z.wicks * r.wick + (+t.rate || 0) + r.logoSt + r.baseSt + r.misc + z.lab;
-  if (p.box) c += (r['box' + t.size] || 0) + r.boxSt;
+  if (p.box) c += (+z.box || 0) + r.boxSt;
   if (p.gift) c += r.dust + r.tissue;
   return c + (+p.extra || 0);
 }
 const unitPrice = (s, tinId, packId, basis) => Math.ceil(unitCost(s, tinId, packId) * (basis === 'rt' ? s.set.mkRt : s.set.mkWs) / 5) * 5;
 const linePrice = (s, l, basis) => (l.ovr !== '' && l.ovr != null && !isNaN(+l.ovr)) ? +l.ovr : unitPrice(s, l.tin, l.pack, basis);
 function orderCalc(s, lines, basis) {
-  const o = { sub: 0, cost: 0, qty: 0, waxG: 0, wicks: 0, gift: 0, boxed: 0, tinsQ: {}, fo: {}, boxQ: { S: 0, M: 0, L: 0 }, dustQ: {}, base: { small: 0, other: 0 }, extraQ: {} };
+  const o = { sub: 0, cost: 0, qty: 0, waxG: 0, wicks: 0, gift: 0, boxed: 0, tinsQ: {}, fo: {}, boxQ: {}, dustQ: {}, base: { small: 0, other: 0 }, extraQ: {} };
   lines.forEach(l => { const q = +l.qty || 0; if (!q) return; const t = tinOf(s, l.tin), p = packOf(s, l.pack), z = s.size[t.size] || s.size.M;
     o.sub += linePrice(s, l, basis) * q; o.cost += unitCost(s, l.tin, l.pack) * q; o.qty += q;
     const g = waxOf(s, t) * q * (1 + s.set.waste / 100); o.waxG += g; o.fo[l.scent] = (o.fo[l.scent] || 0) + g * s.set.load / 100;
     o.wicks += z.wicks * q; o.tinsQ[t.id] = (o.tinsQ[t.id] || 0) + q; if (t.size === 'S') o.base.small += q; else o.base.other += q;
-    if (p.box) { o.boxQ[t.size] += q; o.boxed += q; } if (p.gift) { o.gift += q; o.dustQ[t.id] = (o.dustQ[t.id] || 0) + q; }
+    if (p.box) { const zk = sizeKey(s, t); o.boxQ[zk] = (o.boxQ[zk] || 0) + q; o.boxed += q; } if (p.gift) { o.gift += q; o.dustQ[t.id] = (o.dustQ[t.id] || 0) + q; }
     if (+p.extra) o.extraQ[p.id] = (o.extraQ[p.id] || 0) + q; });
   return o;
 }
@@ -211,7 +216,7 @@ function viewCalc(v) {
     Object.entries(o.fo).forEach(([k, g2]) => rows.push(`<tr><td>Fragrance oil · ${esc(k)}</td><td class="num">${Math.ceil(g2)} g</td><td class="num">${inr(r.fo, 0)}/kg</td><td class="num">${inr(g2 / 1000 * r.fo, 0)}</td></tr>`));
     add('Wicks with tab', o.wicks, 'pcs', r.wick); s.tins.forEach(t => add('Tin · ' + t.name, o.tinsQ[t.id] || 0, 'pcs', +t.rate || 0));
     add('Logo stickers (UV)', o.qty, 'pcs', r.logoSt); add('Bottom stickers 45 mm', o.base.small, 'pcs', r.baseSt); add('Bottom stickers 55 mm', o.base.other, 'pcs', r.baseSt);
-    ['S', 'M', 'L'].forEach(z => add('Box · ' + SIZE_NAMES[z].toLowerCase(), o.boxQ[z], 'pcs', r['box' + z])); add('Box back stickers', o.boxed, 'pcs', r.boxSt);
+    Object.keys(s.size).forEach(z => add('Box · ' + sizeName(s, z).toLowerCase(), o.boxQ[z] || 0, 'pcs', +s.size[z].box || 0)); add('Box back stickers', o.boxed, 'pcs', r.boxSt);
     s.tins.forEach(t => add('Dust cover · ' + t.name, o.dustQ[t.id] || 0, 'pcs', r.dust)); add('Tissue + seal sets', o.gift, 'sets', r.tissue);
     s.packs.forEach(p => add('Packaging extra · ' + p.name, o.extraQ[p.id] || 0, 'pcs', +p.extra || 0));
     $('#cMats').innerHTML = rows.join('') || `<tr><td colspan="4" class="empty">Add order lines to see what to buy.</td></tr>`;
@@ -416,38 +421,43 @@ function viewSettings(v) {
   const bf = [['company', 'Billing company'], ['brand', 'Brand'], ['gstin', 'GSTIN'], ['stateCode', 'State code'], ['phone', 'Phone / WhatsApp'], ['email', 'Email'], ['instagram', 'Instagram handle'], ['hsn', 'HSN code'], ['bankAccName', 'Bank account name'], ['bankName', 'Bank & branch'], ['bankAcc', 'Account number'], ['ifsc', 'IFSC'], ['upi', 'UPI ID'], ['dueDays', 'Invoice due (days)'], ['validDays', 'Quote valid (days)']];
   v.innerHTML = `<div class="wrap"><div class="head"><div><span class="eyebrow">Settings</span><h1>Products, rates &amp; sync</h1></div><button id="sSave" type="button">Save settings</button></div>
    <div class="card"><h2>Sync across devices</h2><div id="syncBox"></div></div>
-   <section><h2>Tins</h2><div class="scroll" style="border-top:none"><table><thead><tr><th>Name</th><th>Size</th><th class="num">Wax (g)</th><th class="num">₹ each</th><th></th></tr></thead><tbody id="sTins"></tbody></table></div><div class="row"><button id="sAddTin" class="ghost" type="button">Add tin</button><span class="note">Wax (g) is the wax that goes into one tin; leave blank to use the size default. Size sets wicks and labour (below).</span></div></section>
+   <section><h2>Sizes</h2><div class="scroll" style="border-top:none"><table><thead><tr><th>Size name</th><th class="num">Default wax (g)</th><th class="num">Wicks</th><th class="num">Labour ₹</th><th class="num">Box ₹</th><th class="num">Burn hrs</th><th></th></tr></thead><tbody id="sSize"></tbody></table></div><div class="row"><button id="sAddSize" class="ghost" type="button">Add size</button><span class="note">A new size appears in each tin's Size list straight away.</span></div></section>
+   <section><h2>Tins</h2><div class="scroll" style="border-top:none"><table><thead><tr><th>Name</th><th>Size</th><th class="num">Wax (g)</th><th class="num">₹ each</th><th></th></tr></thead><tbody id="sTins"></tbody></table></div><div class="row"><button id="sAddTin" class="ghost" type="button">Add tin</button><span class="note">Wax (g) is the wax that goes into one tin; leave blank to use the size default. Size (above) sets wicks, labour and box.</span></div></section>
    <section><h2>Packaging</h2><div class="scroll" style="border-top:none"><table><thead><tr><th>Name</th><th>Box</th><th>Dust cover + tissue</th><th class="num">Extra ₹/candle</th><th></th></tr></thead><tbody id="sPacks"></tbody></table></div><div class="row"><button id="sAddPack" class="ghost" type="button">Add packaging</button></div></section>
    <section><h2>Scents</h2><div class="chips" id="sScents"></div><div class="row"><input id="sNewScent" placeholder="New scent name" style="max-width:280px"><button id="sAddScent" class="ghost" type="button">Add scent</button></div></section>
    <section><h2>Material rates · ₹ excl. GST</h2><div class="fields" id="sRates"></div></section>
-   <section><h2>Per size</h2><div class="fields" id="sSize"></div></section>
    <section><h2>Recipe &amp; pricing</h2><div class="fields" id="sSet"></div></section>
    <section><h2>Business details (invoices)</h2><div class="fields">${bf.map(([k, n]) => `<label>${n}<input data-b="${k}" value="${esc(b[k])}"></label>`).join('')}<label style="grid-column:1/-1">Address<textarea data-b="address">${esc(b.address)}</textarea></label>
      <label style="grid-column:1/-1">Invoice terms<textarea data-b="invTerms" rows="4">${esc(b.invTerms)}</textarea></label><label style="grid-column:1/-1">Quotation terms<textarea data-b="quoteTerms" rows="4">${esc(b.quoteTerms)}</textarea></label></div></section>
    <div class="card"><h2>Backup</h2><div class="row"><button id="sExport" class="ghost" type="button">Download backup</button><label class="btn ghost" style="flex-direction:row">Restore backup<input id="sImport" type="file" accept="application/json" hidden></label></div><span class="note">A backup file holds everything: settings, quotes, invoices and batches.</span></div>
    <div class="row"><button id="sSave2" type="button">Save settings</button></div></div>`;
   const drawProducts = () => {
-    $('#sTins').innerHTML = s.tins.map((t, i) => `<tr data-t="${i}"><td><input data-k="name" value="${esc(t.name)}" aria-label="Tin name" style="min-width:160px"></td><td><select data-k="size" aria-label="Size">${opt(['S', 'M', 'L'].map(z => ({ v: z, t: SIZE_NAMES[z] })), t.size)}</select></td><td class="num"><input data-k="wax" type="number" min="0" value="${+t.wax > 0 ? t.wax : ''}" placeholder="${s.size[t.size]?.w ?? ''}" style="width:80px" aria-label="Wax grams per tin"></td><td class="num"><input data-k="rate" type="number" value="${t.rate}" style="width:90px" aria-label="Rate"></td><td><button class="x" type="button" data-rmt="${i}" aria-label="Remove tin"${s.tins.length < 2 ? ' disabled' : ''}>×</button></td></tr>`).join('');
+    $('#sTins').innerHTML = s.tins.map((t, i) => `<tr data-t="${i}"><td><input data-k="name" value="${esc(t.name)}" aria-label="Tin name" style="min-width:160px"></td><td><select data-k="size" aria-label="Size">${opt(Object.keys(s.size).map(z => ({ v: z, t: sizeName(s, z) })), sizeKey(s, t))}</select></td><td class="num"><input data-k="wax" type="number" min="0" value="${+t.wax > 0 ? t.wax : ''}" placeholder="${s.size[t.size]?.w ?? ''}" style="width:80px" aria-label="Wax grams per tin"></td><td class="num"><input data-k="rate" type="number" value="${t.rate}" style="width:90px" aria-label="Rate"></td><td><button class="x" type="button" data-rmt="${i}" aria-label="Remove tin"${s.tins.length < 2 ? ' disabled' : ''}>×</button></td></tr>`).join('');
     $('#sPacks').innerHTML = s.packs.map((p, i) => `<tr data-p="${i}"><td><input data-k="name" value="${esc(p.name)}" aria-label="Packaging name" style="min-width:140px"></td><td><input data-k="box" type="checkbox"${p.box ? ' checked' : ''} aria-label="Uses box"></td><td><input data-k="gift" type="checkbox"${p.gift ? ' checked' : ''} aria-label="Adds dust cover and tissue"></td><td class="num"><input data-k="extra" type="number" value="${p.extra || 0}" style="width:90px" aria-label="Extra"></td><td><button class="x" type="button" data-rmp="${i}" aria-label="Remove packaging"${s.packs.length < 2 ? ' disabled' : ''}>×</button></td></tr>`).join('');
     $('#sScents').innerHTML = s.scents.map((x, i) => `<span class="chip"><input data-sc="${i}" value="${esc(x)}" aria-label="Scent"><button class="x" type="button" data-rms="${i}" aria-label="Remove scent"${s.scents.length < 2 ? ' disabled' : ''}>×</button></span>`).join('');
   };
   drawProducts();
   $('#sRates').innerHTML = RATE_FIELDS.map(([k, n, u]) => `<label>${n} (₹ ${u})<input data-r="${k}" type="number" step="0.5" value="${s.rates[k]}"></label>`).join('');
-  $('#sSize').innerHTML = ['S', 'M', 'L'].map(z => `<label>${SIZE_NAMES[z]} · default wax (g)<input data-z="${z}.w" type="number" value="${s.size[z].w}"></label><label>${SIZE_NAMES[z]} · wicks<input data-z="${z}.wicks" type="number" value="${s.size[z].wicks}"></label><label>${SIZE_NAMES[z]} · labour ₹<input data-z="${z}.lab" type="number" value="${s.size[z].lab}"></label><label>${SIZE_NAMES[z]} · burn hrs<input data-z="${z}.hrs" type="number" value="${s.size[z].hrs}"></label>`).join('');
+  const drawSizes = () => { const used = new Set(s.tins.map(t => t.size));
+    $('#sSize').innerHTML = Object.keys(s.size).map(z => { const d = s.size[z], fixed = ['S', 'M', 'L'].includes(z), n = (k, w, st) => `<td class="num"><input data-zk="${esc(z)}" data-zf="${k}" type="number" min="0"${st ? ` step="${st}"` : ''} value="${d[k] ?? 0}" style="width:${w}px" aria-label="${esc(d.name)} ${k}"></td>`;
+      return `<tr><td><input data-zk="${esc(z)}" data-zf="name" value="${esc(d.name)}" aria-label="Size name" style="min-width:120px"></td>${n('w', 80)}${n('wicks', 60)}${n('lab', 70, '0.5')}${n('box', 70, '0.5')}${n('hrs', 60)}<td><button class="x" type="button" data-rmz="${esc(z)}" aria-label="Remove size"${fixed || used.has(z) ? ` disabled title="${fixed ? 'Built-in size' : 'Used by a tin'}"` : ''}>×</button></td></tr>`; }).join(''); };
+  drawSizes();
   $('#sSet').innerHTML = SET_FIELDS.map(([k, n, u]) => `<label>${n} (${u})<input data-g="${k}" type="number" step="0.1" value="${s.set[k]}"></label>`).join('');
   let dirty = false; const mark = () => { dirty = true; $('#sSave').textContent = 'Save settings •'; };
   v.addEventListener('input', e => { const t = e.target, num = parseFloat(t.value);
     const tr = t.closest('[data-t]'), pr = t.closest('[data-p]');
-    if (tr && t.dataset.k) { s.tins[+tr.dataset.t][t.dataset.k] = ['rate', 'wax'].includes(t.dataset.k) ? (num || 0) : t.value; if (t.dataset.k === 'size') { const w = tr.querySelector('[data-k=wax]'); if (w) w.placeholder = s.size[t.value]?.w ?? ''; } }
+    if (tr && t.dataset.k) { s.tins[+tr.dataset.t][t.dataset.k] = ['rate', 'wax'].includes(t.dataset.k) ? (num || 0) : t.value; if (t.dataset.k === 'size') { const w = tr.querySelector('[data-k=wax]'); if (w) w.placeholder = s.size[t.value]?.w ?? ''; drawSizes(); } }
     else if (pr && t.dataset.k) { s.packs[+pr.dataset.p][t.dataset.k] = t.type === 'checkbox' ? t.checked : t.dataset.k === 'extra' ? (num || 0) : t.value; }
     else if (t.dataset.sc != null) { if (t.value.trim()) s.scents[+t.dataset.sc] = t.value.trim(); }
     else if (t.dataset.r) { if (!isNaN(num)) s.rates[t.dataset.r] = num; }
-    else if (t.dataset.z) { const [z, k] = t.dataset.z.split('.'); if (!isNaN(num)) s.size[z][k] = num; }
+    else if (t.dataset.zk) { const d = s.size[t.dataset.zk]; if (t.dataset.zf === 'name') { d.name = t.value; drawProducts(); } else if (!isNaN(num)) d[t.dataset.zf] = num; }
     else if (t.dataset.g) { if (!isNaN(num)) s.set[t.dataset.g] = num; }
     else if (t.dataset.b) { s.business[t.dataset.b] = ['dueDays', 'validDays'].includes(t.dataset.b) ? (num || 0) : t.value; }
     else return; mark(); });
+  v.addEventListener('click', e => { const rz = e.target.closest('[data-rmz]'); if (rz && !rz.disabled) { delete s.size[rz.dataset.rmz]; drawSizes(); drawProducts(); mark(); } });
   v.addEventListener('click', e => { const rt = e.target.closest('[data-rmt]'), rp = e.target.closest('[data-rmp]'), rs = e.target.closest('[data-rms]');
-    if (rt && s.tins.length > 1) s.tins.splice(+rt.dataset.rmt, 1); else if (rp && s.packs.length > 1) s.packs.splice(+rp.dataset.rmp, 1); else if (rs && s.scents.length > 1) s.scents.splice(+rs.dataset.rms, 1); else return; drawProducts(); mark(); });
+    if (rt && s.tins.length > 1) s.tins.splice(+rt.dataset.rmt, 1); else if (rp && s.packs.length > 1) s.packs.splice(+rp.dataset.rmp, 1); else if (rs && s.scents.length > 1) s.scents.splice(+rs.dataset.rms, 1); else return; drawProducts(); drawSizes(); mark(); });
+  $('#sAddSize').onclick = () => { const z = uid('z'); s.size[z] = { name: 'New size', w: 150, wicks: 1, lab: 15, hrs: 35, box: 20 }; drawSizes(); drawProducts(); mark(); $(`#sSize [data-zk="${z}"][data-zf=name]`)?.select(); };
   $('#sAddTin').onclick = () => { s.tins.push({ id: uid('t'), name: 'New tin', size: 'M', rate: 30, wax: '' }); drawProducts(); mark(); };
   $('#sAddPack').onclick = () => { s.packs.push({ id: uid('p'), name: 'New packaging', box: false, gift: false, extra: 10 }); drawProducts(); mark(); };
   const addScent = () => { const x = $('#sNewScent').value.trim(); if (!x) return; if (s.scents.some(y => y.toLowerCase() === x.toLowerCase())) { toast('Already in the list'); return; } s.scents.push(x); $('#sNewScent').value = ''; drawProducts(); mark(); };
