@@ -1,6 +1,6 @@
 // MAD Studio service worker: keeps the app shell available offline.
 // Bump VERSION whenever you upload changed files, so devices pick up the update.
-const VERSION = 'mad-v1';
+const VERSION = 'mad-v2';
 const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-180.png',
   'assets/logo-brown.png', 'assets/logo-white.png', 'assets/letterhead.png'];
