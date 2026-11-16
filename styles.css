@@ -11,6 +11,7 @@
   --bg: #17120E; --panel: #211A14; --line: #3D3227; --fg: #F3EADA; --muted: #B5A48C;
   --gold: #D4B27A; --input: #1C1611; --good: #7CC28A; --warn: #E8946A; --chip: #2E251B; color-scheme: dark } }
 * { box-sizing: border-box }
+[hidden] { display: none !important }
 html, body { margin: 0; height: 100% }
 body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 15px; line-height: 1.5; -webkit-text-size-adjust: 100% }
 .app { display: flex; min-height: 100% }
@@ -109,6 +110,86 @@ button:disabled { opacity: .4; cursor: default }
 #toast.on { opacity: 1 }
 @media (min-width: 820px) { #toast { bottom: 24px } }
 .empty { padding: 24px 4px; color: var(--muted) }
+.note a { color: var(--gold) }
+.subnav { display: flex; gap: 4px; border-bottom: 1px solid var(--line); overflow-x: auto; margin-top: -10px }
+.subnav a { padding: 8px 14px; color: var(--muted); text-decoration: none; font-size: 14px; letter-spacing: .04em; border-bottom: 2px solid transparent; white-space: nowrap }
+.subnav a.on { color: var(--gold); border-bottom-color: var(--gold); font-weight: 500 }
+@media (max-width: 819px) { nav a { font-size: 10px; padding: 6px 2px } }
+
+/* ---- Ready to produce (quest) ---- */
+svg.pico, .bigico svg, .loot svg, .badge svg, button.go svg, .splash svg { fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round }
+button.go { background: var(--gold); border-color: var(--gold); color: #fff; font-weight: 500; gap: 8px; padding: 12px 20px; font-size: 16px; box-shadow: 0 3px 0 #6b5129; transition: transform .1s, box-shadow .1s }
+button.go:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 #6b5129 }
+button.go:disabled { background: var(--line); border-color: var(--line); color: var(--muted); box-shadow: none; opacity: 1 }
+button.go svg { width: 20px; height: 20px }
+.rankcard { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 18px; align-items: center; padding: 18px 20px; border-radius: 10px; background: linear-gradient(135deg, #2C3428, #1E1611); color: #F3EADA }
+.rankcard .eyebrow { color: #C8A266 } .rankcard .note { color: #cdbfa6 } .rankcard .note b { color: #C8A266 }
+.rk { display: flex; flex-direction: column; gap: 6px } .rk > b { font-size: 24px; font-weight: 500 }
+.badge { width: 64px; height: 64px; border-radius: 50%; border: 2px solid #C8A266; display: grid; place-items: center; color: #C8A266; box-shadow: 0 0 0 5px rgba(200,162,102,.15) } .badge svg { width: 32px; height: 32px; fill: rgba(200,162,102,.25) }
+.xpbar { height: 8px; border-radius: 99px; background: rgba(255,255,255,.12); overflow: hidden } .xpbar div { height: 100%; background: linear-gradient(90deg, #9C7A45, #E2C48A); border-radius: 99px }
+.rstats { display: flex; gap: 18px } .rstats div { display: flex; flex-direction: column; align-items: center } .rstats b { font-size: 22px; font-weight: 500; color: #E2C48A; font-family: var(--mono) } .rstats span { font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: #cdbfa6 }
+@media (max-width: 640px) { .rankcard { grid-template-columns: auto minmax(0, 1fr) } .rstats { grid-column: 1 / -1; justify-content: space-around } }
+.loot { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px } .loot div { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px; border: 1px solid var(--line); border-radius: 8px; background: var(--input) }
+.loot svg { width: 26px; height: 26px; color: var(--gold) } .loot b { font-family: var(--mono); font-weight: 500; font-size: 16px } .loot span { font-size: 10px; letter-spacing: .15em; text-transform: uppercase; color: var(--muted) }
+.produce { gap: 14px }
+.phead { display: flex; align-items: center; justify-content: space-between; gap: 12px } .ptitle { display: flex; flex-direction: column; text-align: center } .ptitle b { font-size: 18px; font-weight: 500 } .ptitle span { font-size: 12px; color: var(--muted) }
+.xp { font-family: var(--mono); font-size: 13px; color: var(--gold); border: 1px solid var(--gold); border-radius: 99px; padding: 3px 10px; white-space: nowrap } .xp b { font-size: 15px }
+.quest { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px }
+.stage { display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 8px; border: 1px solid var(--line); opacity: .6 }
+.stage.cur { opacity: 1; border-color: var(--gold); background: var(--panel) } .stage.done { opacity: 1 }
+.sname { font-size: 11px; letter-spacing: .08em; display: flex; align-items: center; gap: 6px; line-height: 1.2 } .sname span { width: 18px; height: 18px; flex: 0 0 18px; border-radius: 50%; border: 1px solid currentColor; display: grid; place-items: center; font-size: 10px }
+.stage.done .sname span { background: var(--good); border-color: var(--good); color: #fff } .stage.cur .sname { color: var(--gold); font-weight: 500 }
+.dots { display: flex; gap: 4px; flex-wrap: wrap } .dots i { width: 10px; height: 10px; border-radius: 50%; background: var(--line) } .dots i.d { background: var(--gold) } .dots i.c { background: var(--gold); box-shadow: 0 0 0 3px rgba(200,162,102,.35); animation: glow 1.4s infinite }
+@keyframes glow { 50% { box-shadow: 0 0 0 6px rgba(200,162,102,.1) } }
+@media (max-width: 640px) { .sname { font-size: 0 } .sname span { font-size: 10px } .stage { align-items: center } .dots { justify-content: center } }
+.stagewrap { display: grid; grid-template-columns: minmax(0, 1fr) 150px; gap: 16px; align-items: start }
+.side2 { position: sticky; top: 16px } @media (max-width: 819px) { .stagewrap { grid-template-columns: minmax(0, 1fr) } .side2 { display: none } }
+.candle { width: 100%; height: auto } .candle .tn { fill: var(--input); stroke: var(--fg); stroke-width: 1.5 } .candle .wx { fill: #EDE3D3; stroke: #C8A266; transition: all .5s }
+.candle .wk { stroke: var(--fg); stroke-width: 2 } .candle .fl { fill: #E2A64A; opacity: 0; transform-origin: 32px 28px } .candle.lit .fl { opacity: 1; animation: flick 1.2s infinite alternate }
+.candle .pc { font-family: var(--mono); font-size: 11px; text-anchor: middle; fill: var(--fg) }
+@keyframes flick { from { transform: scale(1, 1) rotate(-2deg) } to { transform: scale(.92, 1.08) rotate(2deg) } }
+.sheet { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 24px; min-height: 52vh; overflow: hidden }
+.sh { display: flex; flex-direction: column; gap: 14px } .in-next { animation: inR .3s ease-out } .in-back { animation: inL .3s ease-out }
+@keyframes inR { from { opacity: 0; transform: translateX(40px) } } @keyframes inL { from { opacity: 0; transform: translateX(-40px) } }
+.stephead { display: flex; gap: 14px; align-items: center }
+.bigico { width: 64px; height: 64px; flex: 0 0 64px; border-radius: 16px; background: var(--fg); color: #E2C48A; display: grid; place-items: center } .bigico svg { width: 36px; height: 36px }
+.stepno { font-size: 11px; letter-spacing: .25em; text-transform: uppercase; color: var(--gold); font-weight: 500 }
+.steph { font-size: 30px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--fg); line-height: 1.15 }
+.hero { font-size: 48px; font-weight: 600; color: var(--gold); margin: 0; line-height: 1.05 } .hsub { margin: -8px 0 0; font-weight: 500; color: var(--muted) }
+.timer { display: flex; align-items: center; gap: 14px } .timer .tt { font-family: var(--mono); font-size: 32px; font-weight: 500; padding: 6px 14px; border-radius: 8px; background: var(--fg); color: #E2C48A; min-width: 6ch; text-align: center } .timer .tt.ok { color: #9be0a7 }
+.tasks { display: flex; flex-direction: column; gap: 10px }
+.task { display: flex; align-items: center; gap: 14px; text-align: left; width: 100%; background: var(--input); color: var(--fg); border: 1.5px solid var(--line); border-radius: 10px; padding: 14px 16px; font-size: 18px; letter-spacing: 0; line-height: 1.35; transition: background .15s, border-color .15s }
+.task b { font-weight: 600 } .task em { margin-left: auto; font-style: normal; font-family: var(--mono); font-size: 12px; color: var(--muted); opacity: 0; transition: opacity .2s }
+.task .box { width: 26px; height: 26px; flex: 0 0 26px; border-radius: 7px; border: 2px solid var(--gold); display: grid; place-items: center; transition: background .15s }
+.task.on { border-color: var(--good); background: rgba(47,107,58,.08) } .task.on .box { background: var(--good); border-color: var(--good) } .task.on .box::after { content: '✓'; color: #fff; font-size: 16px; font-weight: 700 } .task.on em { opacity: 1; color: var(--good) }
+.task.pop { animation: pop .3s } @keyframes pop { 50% { transform: scale(1.03) } }
+.win { display: flex; justify-content: center; padding: 10px 0 }
+.stepnav { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; position: sticky; bottom: 0; background: var(--bg); padding: 12px 0 }
+.stepnav button { padding: 14px 18px; font-size: 17px; justify-content: center } #sNext.pulse:not(:disabled) { animation: pulse 1s 2 }
+@keyframes pulse { 50% { transform: scale(1.04) } }
+@media (max-width: 819px) { .stepnav { bottom: calc(64px + var(--safe-b)) } .steph { font-size: 24px } .hero { font-size: 40px } .sheet { padding: 18px 16px } .task { font-size: 16px; padding: 12px 14px } .bigico { width: 52px; height: 52px; flex-basis: 52px } }
+.splash { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: rgba(30,22,17,.55); animation: fadein .2s; overflow: hidden }
+.splash > .sc { background: #1E1611; color: #F3EADA; border: 2px solid #C8A266; border-radius: 16px; padding: 28px 36px; display: flex; flex-direction: column; align-items: center; gap: 6px; animation: zoom .35s cubic-bezier(.2,1.6,.4,1) }
+.splash .sb { width: 54px; height: 54px; color: #E2C48A; fill: rgba(226,196,138,.3) } .splash b { font-size: 26px; font-weight: 500 } .splash span { color: #C8A266; font-size: 14px; text-align: center }
+.splash.out { opacity: 0; transition: opacity .35s } @keyframes fadein { from { opacity: 0 } } @keyframes zoom { from { transform: scale(.6); opacity: 0 } }
+.confetti { position: absolute; inset: 0; pointer-events: none; overflow: hidden } .sheet { position: relative }
+.confetti i { position: absolute; top: -10px; width: 8px; height: 12px; border-radius: 2px; animation: fall linear forwards }
+@keyframes fall { to { top: 110%; transform: rotate(720deg) translateX(30px) } }
+@media (prefers-reduced-motion: reduce) { .confetti, .dots i.c, .candle.lit .fl, .in-next, .in-back { animation: none !important } .confetti { display: none } }
+.printsteps { display: none }
+@media print {
+  body.printing-steps .app, body.printing-steps #toast { display: none !important }
+  body.printing-steps .printsteps { display: block }
+  .psheet { width: 210mm; height: 297mm; padding: 20mm; page-break-after: always; break-after: page; display: flex; flex-direction: column; gap: 6mm; background: #FBF5EB; color: #1E1611; -webkit-print-color-adjust: exact; print-color-adjust: exact }
+  .psheet:last-child { page-break-after: auto; break-after: auto }
+  .psheet img { width: 34mm } .psheet .pmeta { font-size: 10pt; color: #8A6A38; border-bottom: 1px solid #C8A266; padding-bottom: 3mm }
+  .psheet .pstage { font-size: 11pt; letter-spacing: .2em; text-transform: uppercase; color: #8A6A38; margin-top: 6mm }
+  .psheet .phd { display: flex; align-items: center; gap: 6mm } .psheet .pico { width: 22mm; height: 22mm; padding: 4mm; border-radius: 5mm; background: #1E1611; color: #E2C48A }
+  .psheet .steph { font-size: 34pt } .psheet .hero { font-size: 54pt; color: #8A6A38 } .psheet .hsub { font-size: 14pt; margin: 0 }
+  .psheet .ptasks { display: flex; flex-direction: column; gap: 5mm; font-size: 18pt; margin-top: 4mm } .psheet .ptasks div { display: flex; gap: 5mm; align-items: flex-start }
+  .psheet .ptasks .box { width: 8mm; height: 8mm; flex: 0 0 8mm; border: 2px solid #8A6A38; border-radius: 1.5mm; margin-top: 1.5mm }
+  .psheet .pfoot { margin-top: auto; font-size: 11pt; border-top: 1px solid #C8A266; padding-top: 4mm }
+}
 
 /* ---- Printable document on the letterhead (A4) ---- */
 .paper { width: 210mm; height: 297mm; position: relative; background: #FBF5EB; color: #1E1611; margin: 0 auto; box-shadow: 0 2px 18px rgba(0,0,0,.18); overflow: hidden; font-size: 10pt; line-height: 1.4 }
